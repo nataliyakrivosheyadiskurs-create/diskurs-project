@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дашборд удержания проектов</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f3ef;color:#2c2c2a;font-size:14px;line-height:1.5}
+.page{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+
+/* top bar */
+.top-bar{display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+.top-bar h1{font-size:20px;font-weight:500}
+.top-bar .right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.last-update{font-size:12px;color:#888780}
+select{padding:7px 12px;border:1px solid #b4b2a9;border-radius:8px;background:#fff;color:#2c2c2a;font-size:14px;cursor:pointer}
+button.sec{padding:6px 14px;border:1px solid #b4b2a9;border-radius:8px;background:#fff;color:#5f5e5a;font-size:13px;cursor:pointer}
+button.sec:hover{background:#f1efe8}
+
+/* section titles */
+.section-label{font-size:11px;font-weight:500;letter-spacing:.06em;color:#888780;text-transform:uppercase;margin-bottom:12px}
+
+/* kpi */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:#fff;border-radius:12px;padding:16px 18px;border:.5px solid #d3d1c7}
+.kpi-label{font-size:12px;color:#888780;margin-bottom:5px}
+.kpi-value{font-size:24px;font-weight:500}
+.kpi-sub{font-size:12px;color:#b4b2a9;margin-top:3px}
+
+/* charts */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:640px){.charts-row{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:12px;padding:18px;border:.5px solid #d3d1c7;margin-bottom:20px}
+.card-title{font-size:13px;font-weight:500;margin-bottom:14px}
+.chart-wrap{position:relative;width:100%}
+
+/* tabs */
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:5px 13px;border:1px solid #b4b2a9;border-radius:8px;font-size:12px;cursor:pointer;background:transparent;color:#5f5e5a;transition:all .15s}
+.tab:hover{background:#f1efe8}
+.tab.active{background:#e6f1fb;color:#185fa5;border-color:#85b7eb}
+
+/* employee cards grid */
+.emp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.emp-card{background:#fff;border:.5px solid #d3d1c7;border-radius:12px;padding:16px;cursor:pointer;transition:box-shadow .15s,border-color .15s;user-select:none}
+.emp-card:hover{border-color:#85b7eb;box-shadow:0 2px 8px rgba(55,138,221,.12)}
+.emp-card.no-data{opacity:.45;cursor:default}
+.emp-card.no-data:hover{border-color:#d3d1c7;box-shadow:none}
+.emp-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:15px;margin-bottom:10px}
+.emp-name{font-weight:500;font-size:14px;margin-bottom:4px}
+.emp-stat{font-size:12px;color:#888780;margin-bottom:2px}
+.emp-ret{font-size:18px;font-weight:500;margin-top:6px}
+.emp-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:10px;margin-top:6px}
+.badge-new{background:#e6f1fb;color:#185fa5}
+.badge-nodata{background:#f1efe8;color:#888780}
+
+/* rank table */
+.rank-table{width:100%;border-collapse:collapse;font-size:13px}
+.rank-table th{text-align:left;padding:7px 10px;color:#888780;font-weight:500;border-bottom:.5px solid #d3d1c7;font-size:12px}
+.rank-table td{padding:8px 10px;border-bottom:.5px solid #f1efe8;color:#2c2c2a}
+.rank-table tr:last-child td{border-bottom:none}
+.rank-table tr:hover td{background:#f9f8f5}
+.medal{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:600}
+.m1{background:#fde68a;color:#78350f}.m2{background:#e5e7eb;color:#374151}.m3{background:#fde7ca;color:#7c2d12}
+.bar-wrap{display:flex;align-items:center;gap:8px}
+.bar-bg{flex:1;height:8px;background:#f1efe8;border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.bar-val{font-size:12px;font-weight:500;min-width:36px;text-align:right}
+
+/* all-time table */
+.alltime-table{width:100%;border-collapse:collapse;font-size:13px}
+.alltime-table th{text-align:left;padding:8px 12px;color:#888780;font-weight:500;border-bottom:.5px solid #d3d1c7;font-size:12px;white-space:nowrap}
+.alltime-table td{padding:9px 12px;border-bottom:.5px solid #f1efe8}
+.alltime-table tr:last-child td{border-bottom:none}
+.alltime-table tr:hover td{background:#f9f8f5}
+.pct-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:500}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:680px;box-shadow:0 8px 40px rgba(0,0,0,.15);overflow:hidden}
+.modal-header{display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:.5px solid #d3d1c7}
+.modal-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:16px;flex-shrink:0}
+.modal-title{flex:1}
+.modal-title h2{font-size:16px;font-weight:500}
+.modal-title p{font-size:12px;color:#888780;margin-top:2px}
+.modal-close{width:32px;height:32px;border-radius:8px;border:none;background:#f1efe8;cursor:pointer;font-size:18px;color:#5f5e5a;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:#d3d1c7}
+.modal-body{padding:20px 24px}
+.modal-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px}
+.ms-card{background:#f4f3ef;border-radius:8px;padding:10px 12px}
+.ms-label{font-size:11px;color:#888780;margin-bottom:3px}
+.ms-value{font-size:18px;font-weight:500}
+.proj-table{width:100%;border-collapse:collapse;font-size:13px}
+.proj-table th{text-align:left;padding:7px 10px;color:#888780;font-weight:500;border-bottom:.5px solid #d3d1c7;font-size:11px}
+.proj-table td{padding:8px 10px;border-bottom:.5px solid #f1efe8;vertical-align:middle}
+.proj-table tr:last-child td{border-bottom:none}
+.status-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;white-space:nowrap}
+.s-active{background:#e1f5ee;color:#0f6e56}
+.s-left{background:#fcebeb;color:#a32d2d}
+.s-pause{background:#faeeda;color:#854f0b}
+.type-pill{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px}
+.t-new{background:#e6f1fb;color:#185fa5}
+.t-old{background:#f1efe8;color:#5f5e5a}
+
+/* loading/error */
+.state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:12px;color:#888780}
+.spinner{width:32px;height:32px;border:3px solid #d3d1c7;border-top-color:#378add;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{color:#a32d2d;font-size:14px;text-align:center;max-width:480px}
+
+/* legend */
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.leg{display:flex;align-items:center;gap:5px;font-size:12px;color:#5f5e5a}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* ── Секции модального окна ── */
+.proj-section { margin-bottom: 20px }
+.proj-section:last-child { margin-bottom: 0 }
+.proj-section-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 500; margin-bottom: 10px; padding: 8px 0;
+  border-bottom: .5px solid #d3d1c7;
+}
+.proj-section-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0 }
+.dot-active { background: #1d9e75 }
+.dot-pause  { background: #ef9f27 }
+.dot-left   { background: #e24b4a }
+.s-title-active { color: #0f6e56 }
+.s-title-pause  { color: #854f0b }
+.s-title-left   { color: #a32d2d }
+.proj-section-sum { margin-left: auto; font-size: 12px; font-weight: 400; color: #888780 }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div id="loading" class="state">
+    <div class="spinner"></div>
+    <div>Загружаем данные из Google Таблицы…</div>
+  </div>
+  <div id="error" class="state" style="display:none">
+    <div class="error-msg" id="errorMsg"></div>
+    <button class="sec" onclick="loadData()">Попробовать снова</button>
+  </div>
+
+  <div id="dash" style="display:none">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <h1>Удержание проектов</h1>
+      <div class="right">
+        <span class="last-update" id="lastUpdate"></span>
+        <button class="sec" onclick="loadData()">↻ Обновить</button>
+        <select id="monthSel" onchange="onMonthChange()"></select>
+      </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- КАРТОЧКИ СОТРУДНИКОВ -->
+    <div class="section-label">Сотрудники — <span id="empMonthLabel"></span></div>
+    <div class="emp-cards" id="empCards"></div>
+
+    <!-- ДВА ГРАФИКА -->
+    <div class="charts-row">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">% удержания всех проектов</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="chartAll" role="img" aria-label="Удержание всех проектов"></canvas>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">% удержания новых проектов</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="chartNew" role="img" aria-label="Удержание новых проектов"></canvas>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:20px"></div>
+
+    <!-- ТРЕНД -->
+    <div class="card">
+      <div class="card-title">Динамика удержания по отделу</div>
+      <div class="tabs" id="trendTabs">
+        <button class="tab active" onclick="setTrendTab('all',this)">Все проекты</button>
+        <button class="tab" onclick="setTrendTab('new',this)">Новые проекты</button>
+      </div>
+      <div class="legend">
+        <span class="leg"><span class="leg-dot" style="background:#378add"></span>Среднее по отделу (взвешенное)</span>
+      </div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="chartTrend" role="img" aria-label="Динамика удержания"></canvas>
+      </div>
+    </div>
+
+    <!-- РЕЙТИНГ -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">Рейтинг за выбранный месяц</div>
+      <div class="tabs" id="rankTabs">
+        <button class="tab active" onclick="setRankTab('all',this)">Все проекты</button>
+        <button class="tab" onclick="setRankTab('new',this)">Новые проекты</button>
+        <button class="tab" onclick="setRankTab('old',this)">Старые проекты</button>
+      </div>
+      <table class="rank-table">
+        <thead><tr>
+          <th style="width:36px">#</th><th>Сотрудник</th><th>% удержания</th>
+          <th style="width:90px">Проектов</th><th style="width:90px">Осталось</th>
+        </tr></thead>
+        <tbody id="rankBody"></tbody>
+      </table>
+    </div>
+
+    <!-- СВОДНАЯ ЗА ВСЁ ВРЕМЯ -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:4px">Сводная статистика за всё время</div>
+      <div style="font-size:12px;color:#888780;margin-bottom:14px">Сотрудники без истории за 2024–2025 начали работать позже — это нормально</div>
+      <div style="overflow-x:auto">
+        <table class="alltime-table" id="alltimeTable">
+          <thead><tr>
+            <th>Сотрудник</th>
+            <th>Месяцев в статистике</th>
+            <th>Уникальных проектов</th>
+            <th>Ср. удержание (все)</th>
+            <th>Ср. удержание (новые)</th>
+            <th>Лучший месяц</th>
+            <th>Худший месяц</th>
+            <th>Оборот за всё время</th>
+          </tr></thead>
+          <tbody id="alltimeBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /dash -->
+</div><!-- /page -->
+
+<!-- МОДАЛЬНОЕ ОКНО -->
+<div class="modal-bg" id="modalBg" style="display:none" onclick="closeModal(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <div class="modal-avatar" id="mAvatar"></div>
+      <div class="modal-title">
+        <h2 id="mTitle"></h2>
+        <p id="mSubtitle"></p>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-summary" id="mSummary"></div>
+      <div id="mProjSections"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxzbgk1AyJLKyNdfxWcFv9x9alyVkItXUAQVNaZhC9etoPzSdeYUSrrSufA6l7fMm_euA/exec';
+
+let RAW = [], PROJECTS = [], ALL_MONTHS = [], MONTH_ORDER_LIST = [], ALL_TIME = [];
+let currentMonth = '', rankMode = 'all', trendMode = 'all';
+let chartAllInst, chartNewInst, chartTrendInst;
+
+// Цвета сотрудников
+const EMP_COLORS = {
+  'Руслан':  {bg:'#e6f1fb', text:'#185fa5'},
+  'Лейла':   {bg:'#e1f5ee', text:'#0f6e56'},
+  'Никита':  {bg:'#faeeda', text:'#854f0b'},
+  'Камилла': {bg:'#fbeaf0', text:'#993556'},
+  'Дана':    {bg:'#eeedfe', text:'#534ab7'},
+  'Дамиль':  {bg:'#faece7', text:'#993c1d'},
+};
+function empColor(name) {
+  return EMP_COLORS[name] || {bg:'#f1efe8', text:'#5f5e5a'};
+}
+function initials(name) {
+  return name.slice(0,2).toUpperCase();
+}
+
+// ── Загрузка ──
+async function loadData() {
+  show('loading');
+  try {
+    const res = await fetch(GAS_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    RAW           = data.records;
+    PROJECTS      = data.projects;
+    ALL_MONTHS    = data.months;
+    MONTH_ORDER_LIST = data.monthOrder;
+    ALL_TIME      = data.allTimeStats || [];
+    currentMonth  = ALL_MONTHS[ALL_MONTHS.length - 1];
+    buildMonthSelect();
+    document.getElementById('lastUpdate').textContent =
+      'Обновлено: ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    show('dash');
+    render();
+  } catch(e) {
+    document.getElementById('errorMsg').innerHTML =
+      '<b>Не удалось загрузить данные</b><br>' + e.message +
+      '<br><br>Проверь, что веб-приложение опубликовано с доступом «Все».';
+    show('error');
+  }
+}
+function show(id) {
+  ['loading','error','dash'].forEach(i =>
+    document.getElementById(i).style.display = i===id ? '' : 'none');
+}
+
+// ── Вспомогалки ──
+function monthRows(month) { return RAW.filter(r => r.month === month); }
+
+function groupByEmployee(rows) {
+  const map = {};
+  rows.forEach(r => {
+    if (!map[r.employee]) map[r.employee] = {total:0,new_:0,stayAll:0,stayNew:0,sum:0,staySum:0};
+    const e = map[r.employee];
+    e.total+=r.total; e.new_+=r.new_; e.stayAll+=r.stayAll;
+    e.stayNew+=r.stayNew; e.sum+=r.sum; e.staySum+=r.staySum;
+  });
+  Object.values(map).forEach(e => {
+    e.retAll = e.total>0 ? e.stayAll/e.total : null;
+    e.retNew  = e.new_>0  ? e.stayNew/e.new_  : null;
+    const ot = e.total-e.new_, os = e.stayAll-e.stayNew;
+    e.retOld = ot>0 ? os/ot : null;
+  });
+  return map;
+}
+
+function pct(v)    { return (v===null||v===undefined||isNaN(v)) ? '—' : Math.round(v*100)+'%'; }
+function fmtN(v)   { return v==null ? '—' : v.toLocaleString('ru-RU'); }
+function retColor(v) {
+  if (v===null) return '#888780';
+  if (v>=0.85)  return '#1d9e75';
+  if (v>=0.70)  return '#378add';
+  if (v>=0.50)  return '#ef9f27';
+  return '#e24b4a';
+}
+function pctPillStyle(v) {
+  const c = retColor(v/100);
+  const bg = v>=85?'#e1f5ee':v>=70?'#e6f1fb':v>=50?'#faeeda':'#fcebeb';
+  return `background:${bg};color:${c}`;
+}
+
+// ── Месяц-селект ──
+function buildMonthSelect() {
+  const sel = document.getElementById('monthSel');
+  sel.innerHTML = '';
+  ALL_MONTHS.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m;
+    if (m===currentMonth) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+function onMonthChange() { currentMonth = document.getElementById('monthSel').value; render(); }
+
+// ── KPI ──
+function renderKPI(rows) {
+  const total=rows.reduce((s,r)=>s+r.total,0);
+  const newP =rows.reduce((s,r)=>s+r.new_,0);
+  const stA  =rows.reduce((s,r)=>s+r.stayAll,0);
+  const stN  =rows.reduce((s,r)=>s+r.stayNew,0);
+  const sum  =rows.reduce((s,r)=>s+r.sum,0);
+  const stSum=rows.reduce((s,r)=>s+r.staySum,0);
+  const rA   =total>0?stA/total:null;
+  const rN   =newP>0?stN/newP:null;
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Всего проектов</div>
+      <div class="kpi-value">${total}</div><div class="kpi-sub">из них новых: ${newP}</div></div>
+    <div class="kpi"><div class="kpi-label">% удержания — все</div>
+      <div class="kpi-value" style="color:${retColor(rA)}">${pct(rA)}</div>
+      <div class="kpi-sub">${stA} из ${total} не ушли</div></div>
+    <div class="kpi"><div class="kpi-label">% удержания — новые</div>
+      <div class="kpi-value" style="color:${retColor(rN)}">${pct(rN)}</div>
+      <div class="kpi-sub">${stN} из ${newP} не ушли</div></div>
+    <div class="kpi"><div class="kpi-label">Сумма проектов</div>
+      <div class="kpi-value" style="font-size:17px">${fmtN(sum)} ₸</div>
+      <div class="kpi-sub">остаётся: ${fmtN(stSum)} ₸</div></div>`;
+}
+
+// ── Карточки сотрудников ──
+function renderEmpCards(rows) {
+  document.getElementById('empMonthLabel').textContent = currentMonth;
+  const emp = groupByEmployee(rows);
+  // Показываем все из EMPLOYEE_SHEETS, даже если нет данных за этот месяц
+  const EMPLOYEE_SHEETS = ['Руслан','Лейла','Никита','Камилла','Дана','Дамиль'];
+  const html = EMPLOYEE_SHEETS.map(name => {
+    const e = emp[name];
+    const c = empColor(name);
+    if (!e) {
+      return `<div class="emp-card no-data">
+        <div class="emp-avatar" style="background:${c.bg};color:${c.text}">${initials(name)}</div>
+        <div class="emp-name">${name}</div>
+        <div class="emp-stat" style="margin-top:6px">нет данных за этот месяц</div>
+        <span class="emp-badge badge-nodata">—</span>
+      </div>`;
+    }
+    const r = e.retAll;
+    const hasNew = e.new_ > 0;
+    return `<div class="emp-card" onclick="openModal('${name}')">
+      <div class="emp-avatar" style="background:${c.bg};color:${c.text}">${initials(name)}</div>
+      <div class="emp-name">${name}</div>
+      <div class="emp-stat">${e.total} проектов · ${e.new_} новых</div>
+      <div class="emp-stat">${fmtN(e.sum)} ₸</div>
+      <div class="emp-ret" style="color:${retColor(r)}">${pct(r)}</div>
+      ${hasNew ? `<span class="emp-badge badge-new">новые: ${pct(e.retNew)}</span>` : ''}
+    </div>`;
+  }).join('');
+  document.getElementById('empCards').innerHTML = html;
+}
+
+// ── Модальное окно ──
+function openModal(empName) {
+  const c = empColor(empName);
+  const emp = groupByEmployee(monthRows(currentMonth))[empName];
+  const projs = PROJECTS.filter(p => p.employee===empName && p.month===currentMonth);
+  if (!emp || !projs.length) return;
+
+  document.getElementById('mAvatar').style.background = c.bg;
+  document.getElementById('mAvatar').style.color = c.text;
+  document.getElementById('mAvatar').textContent = initials(empName);
+  document.getElementById('mTitle').textContent = empName;
+  document.getElementById('mSubtitle').textContent = currentMonth + ' · ' + projs.length + ' проектов';
+
+  // KPI-строка
+  document.getElementById('mSummary').innerHTML = `
+    <div class="ms-card"><div class="ms-label">Всего проектов</div><div class="ms-value">${emp.total}</div></div>
+    <div class="ms-card"><div class="ms-label">Продолжают</div>
+      <div class="ms-value" style="color:#1d9e75">${emp.stayAll}</div></div>
+    <div class="ms-card"><div class="ms-label">% удержания</div>
+      <div class="ms-value" style="color:${retColor(emp.retAll)}">${pct(emp.retAll)}</div></div>
+    <div class="ms-card"><div class="ms-label">% удерж. новых</div>
+      <div class="ms-value" style="color:${retColor(emp.retNew)}">${emp.new_>0?pct(emp.retNew):'—'}</div></div>
+    <div class="ms-card"><div class="ms-label">Сумма месяца</div>
+      <div class="ms-value" style="font-size:14px">${fmtN(emp.sum)} ₸</div></div>
+    <div class="ms-card"><div class="ms-label">Активная сумма</div>
+      <div class="ms-value" style="font-size:14px;color:#1d9e75">${fmtN(emp.staySum)} ₸</div></div>`;
+
+  const typePill = t =>
+    t==='Новый'  ? `<span class="type-pill t-new">Новый</span>` :
+    t==='Старый' ? `<span class="type-pill t-old">Старый</span>` : '';
+
+  // Строка проекта
+  const projRow = (p, showDateOut) => `
+    <tr>
+      <td style="font-weight:500;max-width:200px">${p.name}</td>
+      <td style="white-space:nowrap;color:#2c2c2a">${fmtN(p.cost)} ₸</td>
+      <td>${typePill(p.type)}</td>
+      <td style="color:#888780;white-space:nowrap;font-size:12px">${p.dateIn||'—'}</td>
+      <td style="color:#888780;text-align:center;font-size:12px">${p.monthsWorked!==null?p.monthsWorked+' мес.':'—'}</td>
+      ${showDateOut ? `<td style="color:#a32d2d;white-space:nowrap;font-size:12px">${p.dateOut||'—'}</td>` : ''}
+    </tr>`;
+
+  const thead = (cols) => `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+
+  const active  = projs.filter(p => p.status === 'Активен');
+  const paused  = projs.filter(p => p.status === 'На паузе');
+  const left    = projs.filter(p => p.status === 'Ушел');
+
+  let html = '';
+
+  // Секция: продолжают работу
+  if (active.length) {
+    html += `<div class="proj-section">
+      <div class="proj-section-title s-title-active">
+        <span class="proj-section-dot dot-active"></span>
+        Продолжают работу — ${active.length}
+        <span class="proj-section-sum">${fmtN(active.reduce((s,p)=>s+p.cost,0))} ₸</span>
+      </div>
+      <table class="proj-table">
+        ${thead(['Проект','Стоимость','Тип','Зашёл','Работаем'])}
+        <tbody>${active.map(p => projRow(p, false)).join('')}</tbody>
+      </table></div>`;
+  }
+
+  // Секция: на паузе
+  if (paused.length) {
+    html += `<div class="proj-section">
+      <div class="proj-section-title s-title-pause">
+        <span class="proj-section-dot dot-pause"></span>
+        На паузе — ${paused.length}
+        <span class="proj-section-sum">${fmtN(paused.reduce((s,p)=>s+p.cost,0))} ₸</span>
+      </div>
+      <table class="proj-table">
+        ${thead(['Проект','Стоимость','Тип','Зашёл','Работаем'])}
+        <tbody>${paused.map(p => projRow(p, false)).join('')}</tbody>
+      </table></div>`;
+  }
+
+  // Секция: ушли
+  if (left.length) {
+    html += `<div class="proj-section">
+      <div class="proj-section-title s-title-left">
+        <span class="proj-section-dot dot-left"></span>
+        Ушли в этом месяце — ${left.length}
+        <span class="proj-section-sum">${fmtN(left.reduce((s,p)=>s+p.cost,0))} ₸</span>
+      </div>
+      <table class="proj-table">
+        ${thead(['Проект','Стоимость','Тип','Зашёл','Работали','Дата ухода'])}
+        <tbody>${left.map(p => projRow(p, true)).join('')}</tbody>
+      </table></div>`;
+  }
+
+  document.getElementById('mProjSections').innerHTML = html;
+  document.getElementById('modalBg').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('modalBg')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modalBg').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// ── Графики по сотрудникам ──
+function renderBarCharts(rows) {
+  const emp = groupByEmployee(rows);
+  const names = Object.keys(emp).sort();
+  const allV = names.map(n => emp[n].retAll!==null ? Math.round(emp[n].retAll*100) : 0);
+  const newF = names.map(n => ({name:n, val:emp[n].retNew!==null?Math.round(emp[n].retNew*100):null}))
+                    .filter(x=>x.val!==null);
+
+  const baseOpts = {
+    responsive:true, maintainAspectRatio:false, indexAxis:'y',
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{min:0,max:100,grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>v+'%',font:{size:11},color:'#888780'}},
+      y:{grid:{display:false},ticks:{font:{size:11},color:'#2c2c2a'}}
+    }
+  };
+  if (chartAllInst) chartAllInst.destroy();
+  chartAllInst = new Chart(document.getElementById('chartAll'),{
+    type:'bar',
+    data:{labels:names,datasets:[{data:allV,backgroundColor:allV.map(v=>retColor(v/100)),borderRadius:4}]},
+    options:baseOpts
+  });
+  if (chartNewInst) chartNewInst.destroy();
+  chartNewInst = new Chart(document.getElementById('chartNew'),{
+    type:'bar',
+    data:{labels:newF.map(x=>x.name),datasets:[{data:newF.map(x=>x.val),backgroundColor:newF.map(x=>retColor(x.val/100)),borderRadius:4}]},
+    options:baseOpts
+  });
+}
+
+// ── Тренд ──
+function renderTrend() {
+  const points = ALL_MONTHS.map(m => {
+    const rows = RAW.filter(r=>r.month===m);
+    if (!rows.length) return null;
+    const tw = rows.reduce((s,r)=>s+(trendMode==='all'?r.total:r.new_),0);
+    if (!tw) return null;
+    const ws = rows.reduce((s,r)=>{
+      const v = trendMode==='all'?(r.total>0?r.stayAll/r.total:0):(r.new_>0?r.stayNew/r.new_:0);
+      return s+v*(trendMode==='all'?r.total:r.new_);
+    },0);
+    return Math.round(ws/tw*100);
+  });
+  const labels = ALL_MONTHS.map(m=>{const p=m.split(' ');return p[0].slice(0,3)+' '+p[1].slice(2);});
+  if (chartTrendInst) chartTrendInst.destroy();
+  chartTrendInst = new Chart(document.getElementById('chartTrend'),{
+    type:'line',
+    data:{labels,datasets:[{data:points,borderColor:'#378add',backgroundColor:'rgba(55,138,221,.07)',
+      fill:true,tension:0.3,pointRadius:3,pointHoverRadius:5,borderWidth:2,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:10},color:'#888780',maxRotation:45,autoSkip:false}},
+        y:{min:0,max:100,grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>v+'%',font:{size:11},color:'#888780'}}
+      }}
+  });
+}
+
+// ── Рейтинг ──
+function renderRankTable(rows) {
+  const emp = groupByEmployee(rows);
+  const field = rankMode==='all'?'retAll':rankMode==='new'?'retNew':'retOld';
+  const sorted = Object.entries(emp).filter(([,e])=>e[field]!==null).sort((a,b)=>b[1][field]-a[1][field]);
+  const medals = ['m1','m2','m3'];
+  document.getElementById('rankBody').innerHTML = sorted.map(([name,e],i)=>{
+    const v=e[field], pv=Math.round(v*100);
+    const tot=rankMode==='all'?e.total:rankMode==='new'?e.new_:(e.total-e.new_);
+    const st =rankMode==='all'?e.stayAll:rankMode==='new'?e.stayNew:(e.stayAll-e.stayNew);
+    const badge=i<3?`<span class="medal ${medals[i]}">${i+1}</span>`:`<span style="font-size:12px;color:#888780;padding-left:4px">${i+1}</span>`;
+    return `<tr><td>${badge}</td><td style="font-weight:500">${name}</td>
+      <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${pv}%;background:${retColor(v)}"></div></div>
+      <span class="bar-val" style="color:${retColor(v)}">${pv}%</span></div></td>
+      <td style="color:#888780">${tot}</td><td style="color:#888780">${st}</td></tr>`;
+  }).join('');
+}
+
+// ── Сводная за всё время ──
+function renderAllTime() {
+  if (!ALL_TIME.length) return;
+  document.getElementById('alltimeBody').innerHTML = ALL_TIME.map(s => {
+    const ra = s.avgRetAll, rn = s.avgRetNew;
+    const raStyle = ra!==null ? `<span class="pct-pill" style="${pctPillStyle(ra)}">${ra}%</span>` : '—';
+    const rnStyle = rn!==null ? `<span class="pct-pill" style="${pctPillStyle(rn)}">${rn}%</span>` : '—';
+    const best  = s.bestMonth  ? `${s.bestMonth.month} (${s.bestMonth.pct}%)`   : '—';
+    const worst = s.worstMonth ? `${s.worstMonth.month} (${s.worstMonth.pct}%)` : '—';
+    const c = empColor(s.employee);
+    return `<tr>
+      <td><span style="display:inline-flex;align-items:center;gap:8px">
+        <span style="width:28px;height:28px;border-radius:50%;background:${c.bg};color:${c.text};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:500">${initials(s.employee)}</span>
+        <span style="font-weight:500">${s.employee}</span>
+      </span></td>
+      <td style="color:#888780">${s.totalMonths || '—'}</td>
+      <td style="color:#888780">${s.totalProjects || '—'}</td>
+      <td>${raStyle}</td>
+      <td>${rnStyle}</td>
+      <td style="color:#1d9e75;font-size:12px">${best}</td>
+      <td style="color:#a32d2d;font-size:12px">${worst}</td>
+      <td style="color:#888780;white-space:nowrap">${fmtN(s.totalSum)} ₸</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Переключатели ──
+function setRankTab(mode,btn){
+  rankMode=mode;
+  document.getElementById('rankTabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderRankTable(monthRows(currentMonth));
+}
+function setTrendTab(mode,btn){
+  trendMode=mode;
+  document.getElementById('trendTabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderTrend();
+}
+
+// ── Главный рендер ──
+function render() {
+  const rows = monthRows(currentMonth);
+  renderKPI(rows);
+  renderEmpCards(rows);
+  renderBarCharts(rows);
+  renderTrend();
+  renderRankTable(rows);
+  renderAllTime();
+}
+
+loadData();
+</script>
+</body>
+</html>
